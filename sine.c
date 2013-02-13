@@ -148,6 +148,6 @@ void copyData(short *inbuf, short *outbuf ,int length )
 	int i = 0;
 	
     for (i = 0; i < length; i++) {
-    	outbuf[i]  = inbuf[i];
+    	outbuf[i]  = inbuf[i]*0.5;
     }
 }

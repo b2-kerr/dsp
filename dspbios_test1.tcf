@@ -5,18 +5,13 @@ bios.enableRealTimeAnalysis(prog);
 bios.enableRtdx(prog);
 bios.enableTskManager(prog);
 
-bios.HWI.instance("HWI_INT4").interruptSelectNumber = 2;
-bios.HWI.instance("HWI_INT4").interruptSource = prog.get("Timer_1");
-bios.HWI.instance("HWI_INT4").fxn = prog.extern("bingo");
-bios.HWI.instance("HWI_INT4").useDispatcher = 1;
-bios.LOG.create("LOG0");
-bios.HWI.instance("HWI_INT5").interruptSource = prog.get("EDMA_Controller");
-bios.HWI.instance("HWI_INT5").useDispatcher = 1;
-bios.HWI.instance("HWI_INT5").fxn = prog.extern("edma_int");
-bios.CLK.instance("PRD_clock").order = 1;
-bios.TSK.create("TSK0");
-bios.TSK.instance("TSK0").order = 1;
-bios.TSK.instance("TSK0").fxn = prog.extern("task1");
+bios.HWI.instance("HWI_INT8").fxn = prog.extern("edmaHwi");
+bios.HWI.instance("HWI_INT8").useDispatcher = 1;
+bios.HWI.instance("HWI_INT8").monitor = "Nothing";
+bios.HWI.instance("HWI_INT8").fxn = prog.extern("EDMA_intDispatcher");
+
+
+
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

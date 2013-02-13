@@ -62,11 +62,12 @@ EDMA_Config variableName = {
 #include <csl_edma.h>
 #include "sine.h"
 #include "mcbsp.h"
+#include "application_wide.h"
 
 /*
  *  ======== Declarations ========
  */
-#define BUFFSIZE 8
+//#define BUFFSIZE 200
 
 /*
  *  ======== Prototypes ========
@@ -184,8 +185,8 @@ void edmaHwi(int tcc)
 
 	if ( rcvDone && xmtDone ) {
 
-		SINE_add(&sineObjL, gBufRcvL, BUFFSIZE);
-		SINE_add(&sineObjR, gBufRcvR, BUFFSIZE);
+		//SINE_add(&sineObjL, gBufRcvL, BUFFSIZE);
+		//SINE_add(&sineObjR, gBufRcvR, BUFFSIZE);
 		copyData( gBufRcvL, gBufXmtL, BUFFSIZE );
 		copyData( gBufRcvR, gBufXmtR, BUFFSIZE );
 		rcvDone = 0;
