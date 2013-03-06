@@ -1,0 +1,35 @@
+; fira.sa - linear assembly version of FIR filter with circular buffer
+;
+; extern float fira(float *, float *, int, int, int);
+;
+; float w[Lw];
+; #pragma DATA_ALIGN(w, Lb)
+; usage: w[q] = x; read input sample
+; y = fira(w,h,Lh,Nb,q); compute output sample
+; q--; if (q==-1) q = Lw-1; update circular index by backshifting
+;
+; M = filter order
+; Lh = M+1 = filter length
+; Nb >= 1 + ceil(log2(Lh)) = circular buffer bytes-length exponent
+; Lb = 2^(Nb+1) = circular buffer length in bytes
+; Lw = Lb/4 = 2^(Nb-1) = circular buffer in 32-bit words
+; ----------------------------------------------------------------------
+		.global _fira
+_fira 	.cproc w, h, Lh, Nb, q ; function arguments
+		.reg Y, P, si, hi ; local variables
+	ADDAW w, q, w ; point to w[q]=x= current input
+; set up the circular buffer
+	SHL Nb, 16, Nb ; shift Nb to BK0 field
+	set Nb, 8,8, Nb ; set circular mode, BK0, B4
+	MVC Nb, AMR ; load mode into AMR
+	ZERO Y ; output
+loop: .trip 8, 500 ; assume between 8 and 500 taps
+	LDW *w++, si ; load i-th state, si = x(n-i)
+	LDW *h++, hi ; load i-th filter coeff, h(i)
+	MPYSP si,hi,P ; multiply single precision, P = hi*si
+	ADDSP P,Y,Y ;Y=Y+P= accumulate output
+	[Lh] SUB Lh, 1, Lh ; decrement, Lh = Lh-1
+	[Lh] B loop ; loop until Lh=0
+	.return Y ; put sum in A4 - C convention
+	.endproc
+; ----------------------------------------------------------------------
