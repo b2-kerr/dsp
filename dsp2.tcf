@@ -11,6 +11,24 @@ bios.HWI.instance("HWI_INT8").monitor = "Nothing";
 bios.HWI.instance("HWI_INT8").fxn = prog.extern("EDMA_intDispatcher");
 
 bios.MEM.instance("SDRAM").len = 0x01000000;
+bios.GBL.BOARDNAME = "c6713";
+bios.MEM.BIOSSEG = prog.get("SDRAM");
+bios.MEM.SYSINITSEG = prog.get("SDRAM");
+bios.MEM.HWISEG = prog.get("SDRAM");
+bios.MEM.HWIVECSEG = prog.get("SDRAM");
+bios.MEM.RTDXTEXTSEG = prog.get("SDRAM");
+bios.MEM.TEXTSEG = prog.get("SDRAM");
+bios.LOG.create("LOG1");
+bios.TSK.create("TSKMAIN");
+bios.TSK.instance("TSKMAIN").order = 1;
+bios.TSK.instance("TSKMAIN").stackMemSeg = prog.get("SDRAM");
+bios.TSK.instance("TSKMAIN").priority = 5;
+bios.TSK.instance("TSKMAIN").fxn = prog.extern("dspmain");
+bios.RTDX.RTDXDATASEG = prog.get("SDRAM");
+bios.LOG.instance("LOG1").bufLen = 4096;
+bios.LOG.instance("LOG1").bufSeg = prog.get("SDRAM");
+bios.LOG.instance("LOG1").bufSeg = prog.get("IRAM");
+bios.LOG.instance("LOG1").bufLen = 32;
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

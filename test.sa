@@ -1,0 +1,13 @@
+			.global _asmTest
+_asmTest 	.cproc  input
+    		.reg  a,b,c
+; Try to multiply a 16bit signed int with 1 to get a 32bit signed int
+
+	MVKL 1,b
+	MPY input,b,b
+
+; Then convert to SP float
+	INTSP b,c
+
+	.return c
+	.endproc

@@ -63,25 +63,23 @@ EDMA_Config variableName = {
 #include "sine.h"
 #include "mcbsp.h"
 #include "dsp_cw.h"
+#include "convolve.h"
 
 /*
  *  ======== Declarations ========
  */
-//#define BUFFSIZE 200
 
 /*
  *  ======== Prototypes ========
  */
 void initEdma(void);
+void edmaHwi(int tcc);
 
 /*
  *  ======== References ========
  */
 
-extern short gBufXmtL[BUFFSIZE];
-extern short gBufXmtR[BUFFSIZE];
-extern short gBufRcvL[BUFFSIZE];
-extern short gBufRcvR[BUFFSIZE];
+
 
 extern SINE_Obj sineObjL;
 extern SINE_Obj sineObjR;
@@ -122,8 +120,8 @@ EDMA_Config gEdmaConfigRcv = {
     ), 
     EDMA_DST_OF(gBufRcvL),		// dest address
     EDMA_IDX_RMK(
-    	EDMA_IDX_FRMIDX_OF(-BUFFSIZE*2 + 2),
-    	EDMA_IDX_ELEIDX_OF(BUFFSIZE*2)
+    	EDMA_IDX_FRMIDX_OF(-BUFFSIZE*4 + 4),
+    	EDMA_IDX_ELEIDX_OF(BUFFSIZE*4)
     ),
     EDMA_RLD_RMK(
 		EDMA_RLD_ELERLD_OF(2),
@@ -167,33 +165,7 @@ EDMA_Config gEdmaConfigXmt = {
 short gXmtTCC;
 short gRcvTCC;
 
-/*
- *	======== edmaHwi ========
- */
-void edmaHwi(int tcc)
-{
-	static int rcvDone = 0;
-	static int xmtDone = 0;
 
-	if ( tcc == gRcvTCC) {
-		rcvDone = 1;
-	}
-
-	if ( tcc == gXmtTCC) {
-		xmtDone = 1;
-	}
-
-	if ( rcvDone && xmtDone ) {
-
-		//SINE_add(&sineObjL, gBufRcvL, BUFFSIZE);
-		//SINE_add(&sineObjR, gBufRcvR, BUFFSIZE);
-		copyData( gBufRcvL, gBufXmtL, BUFFSIZE );
-		copyData( gBufRcvR, gBufXmtR, BUFFSIZE );
-		rcvDone = 0;
-		xmtDone = 0;
-	}
-
-}
 
 /*
  *	======== initEdma ========
@@ -201,12 +173,14 @@ void edmaHwi(int tcc)
 void initEdma(void)
 {
 
+	/* Setup reload for incoming channel */
 	hEdmaRcv = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
 	hEdmaReloadRcv = EDMA_allocTable(-1);
 
 	gRcvTCC = EDMA_intAlloc(-1);
 	gEdmaConfigRcv.opt |= EDMA_FMK(OPT, TCC, gRcvTCC);
 
+	/* Here the McBSP address is entered */
 	gEdmaConfigRcv.src = MCBSP_getRcvAddr( hMcbspData );
 
 	EDMA_config(hEdmaRcv, &gEdmaConfigRcv);
@@ -215,6 +189,8 @@ void initEdma(void)
 	EDMA_link(hEdmaRcv, hEdmaReloadRcv);
 	EDMA_link(hEdmaReloadRcv, hEdmaReloadRcv);
 
+
+	/* Setup reload for outgoing channel */
 
 	hEdmaXmt = EDMA_open(EDMA_CHA_XEVT1, EDMA_OPEN_RESET);
 	hEdmaReloadXmt = EDMA_allocTable(-1);
@@ -247,3 +223,43 @@ void initEdma(void)
 
 //	DAT_open( DAT_CHAANY, DAT_PRI_LOW, 0);
 }
+
+
+/*
+ *	======== edmaHwi ========
+ */
+void edmaHwi(int tcc)
+{
+	static int rcvDone = 0;
+	static int xmtDone = 0;
+	int x;
+
+	/* Only convolve if both incoming and outgoing buffers are ready */
+
+	if ( tcc == gRcvTCC) {
+		rcvDone = 1;
+	}
+
+	if ( tcc == gXmtTCC) {
+		xmtDone = 1;
+	}
+
+	if ( rcvDone && xmtDone ) {
+
+
+		do_convolve(gBufRcvL,gBufXmtL,BUFFSIZE);
+
+		//SINE_add(&sineObjL, gBufRcvL, BUFFSIZE);
+		//SINE_add(&sineObjR, gBufRcvR, BUFFSIZE);
+		//copyData( gBufRcvL, gBufXmtL, BUFFSIZE );
+		//copyData( gBufRcvR, gBufXmtR, BUFFSIZE );
+
+
+
+		rcvDone = 0;
+		xmtDone = 0;
+	}
+
+}
+
+
