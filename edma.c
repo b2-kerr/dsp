@@ -88,13 +88,22 @@ extern SINE_Obj sineObjR;
  *  ======== Global Variables ========
  */
 
+static short* currentAddr = 0;
+
 //short xfrId;
 
 EDMA_Handle	hEdmaXmt;
 EDMA_Handle hEdmaReloadXmt;
-EDMA_Handle hEdmaRcv;
-EDMA_Handle hEdmaReloadRcv;
 
+EDMA_Handle hEdmaRcv;
+EDMA_Handle hEdmaReloadRcv[RX_BUFFER_CHANNEL_CHUNKS];
+short TCCId[RX_BUFFER_CHANNEL_CHUNKS];
+
+
+/*
+ *
+ * SETUP RECEIVE EDMA
+ */
 EDMA_Config gEdmaConfigRcv = {  
     EDMA_OPT_RMK(
         EDMA_OPT_PRI_LOW,		// Priority
@@ -115,13 +124,13 @@ EDMA_Config gEdmaConfigRcv = {
     ),
     EDMA_SRC_OF(0),				// src address
     EDMA_CNT_RMK(
-    	EDMA_CNT_FRMCNT_OF(BUFFSIZE-1),
+    	EDMA_CNT_FRMCNT_OF(RX_BUFFER_CHANNEL_SAMPLES-1),
     	EDMA_CNT_ELECNT_OF(2)
     ), 
-    EDMA_DST_OF(gBufRcvL),		// dest address
+    EDMA_DST_OF(sRxBuffer),		// dest address
     EDMA_IDX_RMK(
-    	EDMA_IDX_FRMIDX_OF(-BUFFSIZE*4 + 4),
-    	EDMA_IDX_ELEIDX_OF(BUFFSIZE*4)
+    	EDMA_IDX_FRMIDX_OF(-RX_BUFFER_CHANNEL_BYTES + 2),
+    	EDMA_IDX_ELEIDX_OF(RX_BUFFER_CHANNEL_BYTES)
     ),
     EDMA_RLD_RMK(
 		EDMA_RLD_ELERLD_OF(2),
@@ -129,6 +138,14 @@ EDMA_Config gEdmaConfigRcv = {
 	)
 };
 
+
+#if 0
+
+/*
+ *
+ *
+ * SETUP TRANSMIT EDMA
+ */
 EDMA_Config gEdmaConfigXmt = {  
     EDMA_OPT_RMK(
         EDMA_OPT_PRI_LOW,		// Priority
@@ -162,8 +179,10 @@ EDMA_Config gEdmaConfigXmt = {
 		EDMA_RLD_LINK_OF(0x0)
 	)};
 
-short gXmtTCC;
-short gRcvTCC;
+
+#endif
+
+
 
 
 
@@ -172,22 +191,71 @@ short gRcvTCC;
  */
 void initEdma(void)
 {
+	short gXmtTCC;
+	short gRcvTCC;
+	int n;
+	short* sAddr;
 
-	/* Setup reload for incoming channel */
+	/* Get handle to channel with MCBSP receive event on it */
 	hEdmaRcv = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
-	hEdmaReloadRcv = EDMA_allocTable(-1);
 
 	gRcvTCC = EDMA_intAlloc(-1);
 	gEdmaConfigRcv.opt |= EDMA_FMK(OPT, TCC, gRcvTCC);
 
+	TCCId[0] = gRcvTCC;
+
 	/* Here the McBSP address is entered */
 	gEdmaConfigRcv.src = MCBSP_getRcvAddr( hMcbspData );
 
-	EDMA_config(hEdmaRcv, &gEdmaConfigRcv);
-	EDMA_config(hEdmaReloadRcv, &gEdmaConfigRcv);
+	/* Set the destination address */
+	gEdmaConfigRcv.dst = EDMA_DST_OF(sRxBuffer);
 
-	EDMA_link(hEdmaRcv, hEdmaReloadRcv);
-	EDMA_link(hEdmaReloadRcv, hEdmaReloadRcv);
+	/* Create RUNTIME handles based on the above configs */
+	EDMA_config(hEdmaRcv, &gEdmaConfigRcv);
+
+	hEdmaReloadRcv[0] = EDMA_allocTable(-1);
+	EDMA_config(hEdmaReloadRcv[0],&gEdmaConfigRcv);
+
+
+	sAddr = sRxBuffer;
+
+	/* Now sort out all the reloads and linking */
+	for(n=1;n<RX_BUFFER_CHANNEL_CHUNKS;n++){
+
+		/* Setup reload for incoming channel */
+		hEdmaReloadRcv[n] = EDMA_allocTable(-1);
+
+		/* Jump one channel's worth of data */
+		sAddr += RX_BUFFER_CHANNEL_SAMPLES;
+
+		/* Set the destination address */
+		gEdmaConfigRcv.dst = EDMA_DST_OF(sAddr);
+
+		/* Get a new code for this */
+		gRcvTCC = EDMA_intAlloc(-1);
+
+		/* Store it */
+		TCCId[n] = gRcvTCC;
+
+		gEdmaConfigRcv.opt |= EDMA_FMK(OPT, TCC, gRcvTCC);
+
+		/* Set This In */
+		EDMA_config(hEdmaReloadRcv[n], &gEdmaConfigRcv);
+
+		/* Link previous one to this one */
+		EDMA_link(hEdmaReloadRcv[n-1],hEdmaReloadRcv[n]);
+
+	}
+
+
+	/* Link the initial one to the second of the reloads */
+	EDMA_link(hEdmaRcv,hEdmaReloadRcv[1]);
+
+	/* Link final one to first one */
+	EDMA_link(hEdmaReloadRcv[RX_BUFFER_CHANNEL_CHUNKS-1], hEdmaReloadRcv[0]);
+
+
+#if 0
 
 
 	/* Setup reload for outgoing channel */
@@ -206,21 +274,31 @@ void initEdma(void)
 	EDMA_link(hEdmaXmt, hEdmaReloadXmt);
 	EDMA_link(hEdmaReloadXmt, hEdmaReloadXmt);
 
-	/* This is the funciton called by hte EDMA_intDispatcher function which is the
+#endif
+
+
+
+	/* This is the funciton called by the EDMA_intDispatcher function which is the
 	 * acutal entry point for the interrupt
 	 */
-	EDMA_intHook(gXmtTCC, edmaHwi);
-	EDMA_intHook(gRcvTCC, edmaHwi);
 
-	EDMA_intClear(gXmtTCC);
-	EDMA_intClear(gRcvTCC);
+	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS;n++){
 
-	EDMA_intEnable(gXmtTCC);
-	EDMA_intEnable(gRcvTCC);
+		//EDMA_intHook(gXmtTCC, edmaHwi);
+
+		EDMA_intHook(TCCId[n], edmaHwi);
+
+		EDMA_intClear(TCCId[n]);
+		//EDMA_intClear(gRcvTCC);
+
+		EDMA_intEnable(TCCId[n]);
+	//	EDMA_intEnable(gRcvTCC);
+
+
+		//EDMA_enableChannel(hEdmaXmt);
+	}
 
 	EDMA_enableChannel(hEdmaRcv);
-	EDMA_enableChannel(hEdmaXmt);
-
 //	DAT_open( DAT_CHAANY, DAT_PRI_LOW, 0);
 }
 
@@ -232,22 +310,20 @@ void edmaHwi(int tcc)
 {
 	static int rcvDone = 0;
 	static int xmtDone = 0;
+
+	static int counter = 0;
+
 	int x;
 
+	counter ++;
+
+
 	/* Only convolve if both incoming and outgoing buffers are ready */
-
-	if ( tcc == gRcvTCC) {
-		rcvDone = 1;
-	}
-
-	if ( tcc == gXmtTCC) {
-		xmtDone = 1;
-	}
 
 	if ( rcvDone && xmtDone ) {
 
 
-		do_convolve(gBufRcvL,gBufXmtL,BUFFSIZE);
+		//do_convolve(gBufRcvL,gBufXmtL,BUFFSIZE);
 
 		//SINE_add(&sineObjL, gBufRcvL, BUFFSIZE);
 		//SINE_add(&sineObjR, gBufRcvR, BUFFSIZE);
@@ -259,6 +335,8 @@ void edmaHwi(int tcc)
 		rcvDone = 0;
 		xmtDone = 0;
 	}
+
+	//EDMA_intClear(tcc);
 
 }
 

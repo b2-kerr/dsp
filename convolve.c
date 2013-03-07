@@ -24,8 +24,10 @@ enum{
 	BLOCK_SIZE_256,
 	BLOCK_SIZE_512,
 	BLOCK_SIZE_1024,
+	BLOCK_SIZE_2048
 };
 
+/* The assembly functions */
 extern float fira(float *, float *, int, int, int);
 extern float conv( short *, float *, int, int, int);
 extern float asmTest(int);
