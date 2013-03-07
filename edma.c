@@ -64,6 +64,7 @@ EDMA_Config variableName = {
 #include "mcbsp.h"
 #include "dsp_cw.h"
 #include "convolve.h"
+#include "log.h"
 
 /*
  *  ======== Declarations ========
@@ -89,6 +90,7 @@ extern SINE_Obj sineObjR;
  */
 
 static short* currentAddr = 0;
+static int counter = 0;
 
 //short xfrId;
 
@@ -124,7 +126,7 @@ EDMA_Config gEdmaConfigRcv = {
     ),
     EDMA_SRC_OF(0),				// src address
     EDMA_CNT_RMK(
-    	EDMA_CNT_FRMCNT_OF(RX_BUFFER_CHANNEL_SAMPLES-1),
+    	EDMA_CNT_FRMCNT_OF(RX_BUFFER_CHANNEL_CHUNKS_SAMPLES-1),
     	EDMA_CNT_ELECNT_OF(2)
     ), 
     EDMA_DST_OF(sRxBuffer),		// dest address
@@ -196,6 +198,8 @@ void initEdma(void)
 	int n;
 	short* sAddr;
 
+	LOG_printf(&LOG1,"Setting up EDMA....");
+
 	/* Get handle to channel with MCBSP receive event on it */
 	hEdmaRcv = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
 
@@ -219,6 +223,8 @@ void initEdma(void)
 
 	sAddr = sRxBuffer;
 
+	LOG_printf(&LOG1, "First addr: %X", sAddr);
+
 	/* Now sort out all the reloads and linking */
 	for(n=1;n<RX_BUFFER_CHANNEL_CHUNKS;n++){
 
@@ -226,7 +232,9 @@ void initEdma(void)
 		hEdmaReloadRcv[n] = EDMA_allocTable(-1);
 
 		/* Jump one channel's worth of data */
-		sAddr += RX_BUFFER_CHANNEL_SAMPLES;
+		sAddr += RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;
+
+		LOG_printf(&LOG1, "[%d] addr: %X", n, sAddr);
 
 		/* Set the destination address */
 		gEdmaConfigRcv.dst = EDMA_DST_OF(sAddr);
@@ -281,62 +289,33 @@ void initEdma(void)
 	/* This is the funciton called by the EDMA_intDispatcher function which is the
 	 * acutal entry point for the interrupt
 	 */
-
 	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS;n++){
-
-		//EDMA_intHook(gXmtTCC, edmaHwi);
-
 		EDMA_intHook(TCCId[n], edmaHwi);
-
 		EDMA_intClear(TCCId[n]);
-		//EDMA_intClear(gRcvTCC);
-
 		EDMA_intEnable(TCCId[n]);
-	//	EDMA_intEnable(gRcvTCC);
-
-
-		//EDMA_enableChannel(hEdmaXmt);
 	}
 
 	EDMA_enableChannel(hEdmaRcv);
-//	DAT_open( DAT_CHAANY, DAT_PRI_LOW, 0);
+
+	return;
 }
 
+
+
+int getCount(void){
+
+
+	return counter;
+}
 
 /*
  *	======== edmaHwi ========
  */
 void edmaHwi(int tcc)
 {
-	static int rcvDone = 0;
-	static int xmtDone = 0;
 
-	static int counter = 0;
-
-	int x;
 
 	counter ++;
-
-
-	/* Only convolve if both incoming and outgoing buffers are ready */
-
-	if ( rcvDone && xmtDone ) {
-
-
-		//do_convolve(gBufRcvL,gBufXmtL,BUFFSIZE);
-
-		//SINE_add(&sineObjL, gBufRcvL, BUFFSIZE);
-		//SINE_add(&sineObjR, gBufRcvR, BUFFSIZE);
-		//copyData( gBufRcvL, gBufXmtL, BUFFSIZE );
-		//copyData( gBufRcvR, gBufXmtR, BUFFSIZE );
-
-
-
-		rcvDone = 0;
-		xmtDone = 0;
-	}
-
-	//EDMA_intClear(tcc);
 
 }
 

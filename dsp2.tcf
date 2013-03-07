@@ -29,6 +29,27 @@ bios.LOG.instance("LOG1").bufLen = 4096;
 bios.LOG.instance("LOG1").bufSeg = prog.get("SDRAM");
 bios.LOG.instance("LOG1").bufSeg = prog.get("IRAM");
 bios.LOG.instance("LOG1").bufLen = 32;
+bios.MEM.TEXTSEG = prog.get("IRAM");
+bios.MEM.ARGSSEG = prog.get("SDRAM");
+bios.MEM.STACKSEG = prog.get("SDRAM");
+bios.MEM.GBLINITSEG = prog.get("SDRAM");
+bios.MEM.TRCDATASEG = prog.get("SDRAM");
+bios.MEM.SYSDATASEG = prog.get("SDRAM");
+bios.MEM.OBJSEG = prog.get("SDRAM");
+bios.TSK.instance("TSKMAIN").priority = 1;
+bios.MEM.ARGSSEG = prog.get("IRAM");
+bios.MEM.STACKSEG = prog.get("IRAM");
+bios.MEM.GBLINITSEG = prog.get("IRAM");
+bios.MEM.TRCDATASEG = prog.get("IRAM");
+bios.MEM.SYSDATASEG = prog.get("IRAM");
+bios.MEM.OBJSEG = prog.get("IRAM");
+bios.MEM.BIOSSEG = prog.get("IRAM");
+bios.MEM.SYSINITSEG = prog.get("IRAM");
+bios.MEM.HWISEG = prog.get("IRAM");
+bios.MEM.HWIVECSEG = prog.get("IRAM");
+bios.MEM.RTDXTEXTSEG = prog.get("IRAM");
+bios.LOG.instance("LOG1").bufSeg = prog.get("SDRAM");
+bios.LOG.instance("LOG1").bufLen = 2048;
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

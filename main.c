@@ -19,8 +19,9 @@
 
 #include "c62.h"
 #include "dsp_cw.h"
-
+#include <stdio.h>
 #include "convolve.h"
+
 
 /*
  *  ======== Declarations ========
@@ -58,10 +59,7 @@ SINE_Obj sineObjR;
 void main()
 {
 
-
-    //SINE_init(&sineObjL, 200, 48 * 1000);
-	//SINE_init(&sineObjR, 200, 48 * 1000);
-
+	LOG_printf(&LOG1,"Main starting.....\n");
 
 }
 
@@ -84,8 +82,8 @@ void initHwi(void)
 /* Test the circular buffer stuff */
 int dspmain(void){
 
-	LOG_printf(&LOG1,"Starting.....\n");
-
+	//printf("Hello there....");
+	LOG_printf(&LOG1,"DSP MAIN Starting.....\n");
 
 	int i;
 
@@ -98,20 +96,28 @@ int dspmain(void){
 	}
 
 	CSL_init();
+
 	//TSK_sleep(2000);
 
 	//convolve();
 
+#if 1
+	LOG_printf(&LOG1, "Init McBSP...\n");
 	initMcBSP();
+	LOG_printf(&LOG1, "Init EDMA...\n");
 	initEdma();
+	LOG_printf(&LOG1, "Init HWI...\n");
 	initHwi();
-
+	LOG_printf(&LOG1, "Start McBSP...\n");
 	MCBSP_write( hMcbspData, 0 );
-
+#endif
 
 	while(1){
 		TSK_sleep(2000);
-		LOG_printf(&LOG1, "Tick...\n");
+		LOG_printf(&LOG1, "Count is at %d",getCount());
+		//LOG_printf(&LOG1, "Tick...\n");
+		//usleep(1000000);
+		TSK_yield();
 	}
 
 	return 0;

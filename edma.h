@@ -7,3 +7,4 @@
 extern void initEdma(void);
 extern void edmaHwi(int tcc);
 extern EDMA_Handle hEdma;
+int getCount(void);
