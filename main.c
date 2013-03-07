@@ -40,12 +40,23 @@ void test(void);
  *  ======== Global Variables ========
  */
 
-short sRxBuffer[RX_BUFFER_SAMPLES] = {0};
+short sRxBuffer[RX_BUFFER_SAMPLES];
+short sTxBuffer[RX_BUFFER_SAMPLES];
+
+chunksData_s RXchunksData[16];
+chunksData_s TXchunksData[16];
+
 #pragma DATA_ALIGN(sRxBuffer, RX_BUFFER_BYTES)
+#pragma DATA_ALIGN(sTxBuffer, RX_BUFFER_BYTES)
+
 
 /* These two point to the parts of the total buffer which represent the two channels */
-short* gBufRcvL;
-short* gBufRcvR;
+short* sTX_L;
+short* sTX_R;
+
+short* sRX_L;
+short* sRX_R;
+
 
 //#pragma DATA_ALIGN(gBufXmtL, BUFFSIZE*2)
 
@@ -87,8 +98,8 @@ int dspmain(void){
 
 	int i;
 
-	gBufRcvL = (short*)&sRxBuffer;
-	gBufRcvR = (short*)&sRxBuffer + RX_BUFFER_CHANNEL_SAMPLES;
+	sRX_L = (short*)&sRxBuffer;
+	sRX_R = (short*)&sRxBuffer + RX_BUFFER_CHANNEL_SAMPLES;
 
 	for ( i=0; i<RX_BUFFER_SAMPLES; i++)
 	{
@@ -114,7 +125,7 @@ int dspmain(void){
 
 	while(1){
 		TSK_sleep(2000);
-		LOG_printf(&LOG1, "Count is at %d",getCount());
+		LOG_printf(&LOG1, "Count is at RX:TX [%d:%d]",getRXCount(), getTXCount());
 		//LOG_printf(&LOG1, "Tick...\n");
 		//usleep(1000000);
 		TSK_yield();

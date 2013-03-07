@@ -10,7 +10,6 @@
 
 #include "dsp2cfg.h"
 
-
 /* This is STEREO, so the TOTAL buffer is double the CHANNEL buffer */
 
 /* How many 2-byte samples in each channel buffer? */
@@ -32,12 +31,30 @@
 	#error "Increase Channel Buffer Size"
 #endif
 
+
+typedef struct MsgObj {
+    QUE_Elem elem; /* first field for QUE */
+    short* addr; /* message value */
+    } MsgObj, *Msg;
+
+typedef struct {
+	short TCCID;
+	short* LAddr;
+	short* RAddr;
+}chunksData_s;
+
+/* Location of the data */
+extern chunksData_s RXchunksData[16];
+extern chunksData_s TXchunksData[16];
+
 /* The buffers are defined elsewhere */
 extern short  sRxBuffer[RX_BUFFER_SAMPLES];
-extern short*  gBufRcvL;
-extern short*  gBufRcvR;
+extern short  sTxBuffer[RX_BUFFER_SAMPLES];
 
-//extern short gBufXmtL[BUFFSIZE];
-//extern short gBufXmtR[BUFFSIZE];
+/* Pointers representing the channel data within the larger buffers */
+extern short*  sTX_L;
+extern short*  sTX_R;
+extern short*  sRX_L;
+extern short*  sRX_R;
 
 #endif /* APPLICATION_WIDE_H_ */

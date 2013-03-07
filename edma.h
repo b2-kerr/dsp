@@ -6,5 +6,7 @@
 
 extern void initEdma(void);
 extern void edmaHwi(int tcc);
+extern void edmaHwiTX(int tcc);
 extern EDMA_Handle hEdma;
-int getCount(void);
+int getRXCount(void);
+int getTXCount(void);

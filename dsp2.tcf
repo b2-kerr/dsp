@@ -50,6 +50,18 @@ bios.MEM.HWIVECSEG = prog.get("IRAM");
 bios.MEM.RTDXTEXTSEG = prog.get("IRAM");
 bios.LOG.instance("LOG1").bufSeg = prog.get("SDRAM");
 bios.LOG.instance("LOG1").bufLen = 2048;
+bios.MEM.ARGSSEG = prog.get("SDRAM");
+bios.MEM.STACKSEG = prog.get("SDRAM");
+bios.MEM.GBLINITSEG = prog.get("SDRAM");
+bios.MEM.TRCDATASEG = prog.get("SDRAM");
+bios.MEM.SYSDATASEG = prog.get("SDRAM");
+bios.MEM.OBJSEG = prog.get("SDRAM");
+bios.MEM.SYSINITSEG = prog.get("SDRAM");
+bios.MEM.BIOSSEG = prog.get("SDRAM");
+bios.MEM.HWISEG = prog.get("SDRAM");
+bios.MEM.HWIVECSEG = prog.get("SDRAM");
+bios.MEM.RTDXTEXTSEG = prog.get("SDRAM");
+bios.QUE.create("Q1");
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();
