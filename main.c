@@ -18,6 +18,7 @@
 #include "mcbsp.h"
 #include "dsk6713.h"
 #include "dsk6713_led.h"
+#include "filters.h"
 
 #include "c62.h"
 #include "dsp_cw.h"
@@ -102,8 +103,6 @@ void main()
 		sTxBuffer[i] = 0;
 	}
 
-	//SWI_enable();
-
 #if 1
 	initMcBSP();
 
@@ -139,7 +138,8 @@ void audiotsk (void){
 	short*inputR,*outputR;
 	int n;
 	float ret;
-
+	const float*currentFilter;
+	int currentFilterLength;
 
 	while(1){
 
@@ -152,33 +152,53 @@ void audiotsk (void){
 	inputR = inputL + RX_BUFFER_CHANNEL_SAMPLES;
 	outputR = outputL + RX_BUFFER_CHANNEL_SAMPLES;
 
+	currentFilter = &flt_BandPass[0];
+	currentFilterLength = 101;
+
 	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
+
 
 #if 1
 		//C62_disableIER(C62_EINT8);
 
 		ret = conv(
 				inputL,
-				H,
-				FILTER_LENGTH_WORDS,
+				(float*)currentFilter,
+				currentFilterLength,
 				BLOCK_SIZE_4096,
 				n);
 
 		//C62_enableIER(C62_EINT8);
 
-		*outputL = (short)ret;
+
+		*outputL = (short)(ret*1.2);
+
+
+		ret = conv(
+				inputR,
+				(float*)currentFilter,
+				currentFilterLength,
+				BLOCK_SIZE_4096,
+				n);
+
+		*outputR = (short)(ret*1.2);
+
 
 #else
-		*outputL = 0;
-#endif
-
-
+		*outputL = *inputR;
 		*outputR = *inputR;
+
+		inputR++;
+		inputL++;
+
+
+#endif
 
 		outputL++;
 		outputR++;
 
-		inputR++;
+
+
 	}
 
 	}
