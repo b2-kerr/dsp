@@ -42,6 +42,18 @@ bios.MBX.create("MBX0");
 bios.MBX.instance("MBX0").elementSeg = prog.get("SDRAM");
 bios.MBX.instance("MBX0").length = 5;
 bios.MBX.instance("MBX0").messageSize = 4;
+bios.SWI.create("SWI0");
+bios.SWI.instance("SWI0").order = 1;
+bios.SWI.instance("SWI0").fxn = prog.extern("swi_go");
+bios.SWI.instance("SWI0").mailbox = 3;
+bios.MBX.create("MBX1");
+bios.MBX.instance("MBX1").elementSeg = prog.get("SDRAM");
+bios.MBX.instance("MBX1").length = 5;
+bios.MBX.instance("MBX1").messageSize = 4;
+bios.TSK.create("AUDIO");
+bios.TSK.instance("AUDIO").order = 2;
+bios.TSK.instance("AUDIO").fxn = prog.extern("audiotsk");
+bios.TSK.instance("AUDIO").priority = 15;
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

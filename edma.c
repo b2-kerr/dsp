@@ -414,6 +414,42 @@ int getTXCount(void){
 }
 
 
+
+
+
+
+void swi_go(void){
+
+	static int in=0,out=0;
+	int n;
+	static short* outmemL,*inmemL;
+	static short* outmemR,*inmemR;
+
+	if(FALSE==MBX_pend(&MBX0,&inmemL,0)){
+		in++;
+		return;
+	}
+
+	if(FALSE==MBX_pend(&MBX1,&outmemL,0)){
+		out++;
+		return;
+	}
+
+	inmemR = inmemL + RX_BUFFER_CHANNEL_SAMPLES;
+	outmemR = outmemL + RX_BUFFER_CHANNEL_SAMPLES;
+
+	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
+		*outmemL = *inmemL;
+		*outmemR = *inmemR;
+
+		outmemL++;inmemL++;
+		outmemR++;inmemR++;
+	}
+
+
+}
+
+
 /*
  *	======== edmaHwi ========
  */
@@ -422,13 +458,20 @@ void edmaHwi(int tcc)
 
 	static int a[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
+	static int error=0;
+
 	a[tcc]++;
 
 	counterRX ++;
 
 	/* Buffer of data is ready, post this in */
 
-	MBX_post(&MBX0,&RXchunksData[tcc].LAddr,0);
+	if(FALSE==MBX_post(&MBX0,&RXchunksData[tcc].LAddr,0)){
+		error++;
+	}
+
+	/* Schedule SWI */
+	//SWI_andn(&SWI0,0x1);
 
 	//currentAddr = RXchunksData[tcc].LAddr;
 
@@ -449,6 +492,8 @@ void edmaHwiTX(int tcc)
 	short*outmemL;
 	short*outmemR;
 
+	static int error=0;
+
 	static int a[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 	a[tcc]++;
@@ -457,12 +502,23 @@ void edmaHwiTX(int tcc)
 
 	//inmem = sRxBuffer;
 
-	/* Grab latest buffer from incoming HWI */
+	/* Put this buffer in the outgoing mbox */
+	/* TODO: Test for failure. */
+	if(FALSE==MBX_post(&MBX1,&TXchunksData[tcc].LAddr,0)){
+				error++;
+	}
+
+#if 0
 	if(MBX_pend(&MBX0,&inmem,0) == FALSE ){
 		/* NO Buffer available is BAD */
 		return;
 	}
+#endif
 
+	/* Post SWI saying there's a free output buffer */
+	//SWI_andn(&SWI0,0x2);
+
+#if 0
 	//inmem = currentAddr;
 	outmemL = TXchunksData[tcc].LAddr;
 	outmemR = TXchunksData[tcc].RAddr;
@@ -472,6 +528,7 @@ void edmaHwiTX(int tcc)
 		*outmemR = *(inmem+RX_BUFFER_CHANNEL_SAMPLES);
 		outmemL++;outmemR++;inmem++;
 	}
+#endif
 
 
 	return;

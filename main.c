@@ -44,6 +44,7 @@ void test(void);
 
 short sRxBuffer[RX_BUFFER_SAMPLES];
 short sTxBuffer[RX_BUFFER_SAMPLES];
+short sProcess[RX_BUFFER_CHANNEL_CHUNKS_BYTES];
 
 chunksData_s RXchunksData[16];
 chunksData_s TXchunksData[16];
@@ -81,6 +82,38 @@ void initHwi(void)
 }
 
 
+void audiotsk (void){
+
+	short*inputL,*outputL;
+	short*inputR,*outputR;
+	int n;
+
+
+	while(1){
+
+	/* Wait for input buffer */
+	MBX_pend(&MBX0,&inputL,SYS_FOREVER);
+
+	/* Wait for output buffer */
+	MBX_pend(&MBX1,&outputL,SYS_FOREVER);
+
+	inputR = inputL + RX_BUFFER_CHANNEL_SAMPLES;
+	outputR = outputL + RX_BUFFER_CHANNEL_SAMPLES;
+
+	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
+		*outputL = *inputL;
+		*outputR = *inputR;
+
+		outputL++;outputR++;
+		inputL++;inputR++;
+	}
+
+	}
+
+
+}
+
+
 /* Test the circular buffer stuff */
 int dspmain(void){
 
@@ -100,6 +133,8 @@ int dspmain(void){
 		sRxBuffer[i] = 0;
 		sTxBuffer[i] = 0;
 	}
+
+	//SWI_enable();
 
 	initMcBSP();
 
