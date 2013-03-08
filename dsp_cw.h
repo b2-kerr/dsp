@@ -13,7 +13,7 @@
 /* This is STEREO, so the TOTAL buffer is double the CHANNEL buffer */
 
 /* How many 2-byte samples in each channel buffer? */
-#define RX_BUFFER_CHANNEL_SAMPLES (256)
+#define RX_BUFFER_CHANNEL_SAMPLES (2048)
 
 /* The main buffer is split into two buffers: one for each channel */
 #define RX_BUFFER_SAMPLES (RX_BUFFER_CHANNEL_SAMPLES*2)
@@ -49,6 +49,8 @@ enum{
 };
 
 #define FILTER_LENGTH_WORDS 11
+#define FILTER_MIDDLE ((FILTER_LENGTH_WORDS-1)/2)
+
 extern float H[FILTER_LENGTH_WORDS];
 
 typedef struct MsgObj {

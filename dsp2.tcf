@@ -54,6 +54,9 @@ bios.TSK.create("AUDIO");
 bios.TSK.instance("AUDIO").order = 2;
 bios.TSK.instance("AUDIO").fxn = prog.extern("audiotsk");
 bios.TSK.instance("AUDIO").priority = 15;
+bios.SWI.instance("PRD_swi").order = 1;
+bios.SWI.instance("KNL_swi").order = 2;
+bios.SWI.instance("SWI0").destroy();
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

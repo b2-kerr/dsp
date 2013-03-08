@@ -97,6 +97,9 @@ extern SINE_Obj sineObjR;
 static int counterTX = 0;
 static int counterRX = 0;
 
+int RXerror=0;
+int TXerror=0;
+
 static short* currentAddr;
 
 
@@ -416,40 +419,6 @@ int getTXCount(void){
 
 
 
-
-
-void swi_go(void){
-
-	static int in=0,out=0;
-	int n;
-	static short* outmemL,*inmemL;
-	static short* outmemR,*inmemR;
-
-	if(FALSE==MBX_pend(&MBX0,&inmemL,0)){
-		in++;
-		return;
-	}
-
-	if(FALSE==MBX_pend(&MBX1,&outmemL,0)){
-		out++;
-		return;
-	}
-
-	inmemR = inmemL + RX_BUFFER_CHANNEL_SAMPLES;
-	outmemR = outmemL + RX_BUFFER_CHANNEL_SAMPLES;
-
-	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
-		*outmemL = *inmemL;
-		*outmemR = *inmemR;
-
-		outmemL++;inmemL++;
-		outmemR++;inmemR++;
-	}
-
-
-}
-
-
 /*
  *	======== edmaHwi ========
  */
@@ -458,8 +427,6 @@ void edmaHwi(int tcc)
 
 	static int a[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-	static int error=0;
-
 	a[tcc]++;
 
 	counterRX ++;
@@ -467,15 +434,10 @@ void edmaHwi(int tcc)
 	/* Buffer of data is ready, post this in */
 
 	if(FALSE==MBX_post(&MBX0,&RXchunksData[tcc].LAddr,0)){
-		error++;
+		RXerror++;
 	}
 
-	/* Schedule SWI */
-	//SWI_andn(&SWI0,0x1);
 
-	//currentAddr = RXchunksData[tcc].LAddr;
-
-	/* Disable events? */
 
 	return;
 }
@@ -486,13 +448,6 @@ void edmaHwi(int tcc)
  */
 void edmaHwiTX(int tcc)
 {
-
-	int n;
-	short*inmem;
-	short*outmemL;
-	short*outmemR;
-
-	static int error=0;
 
 	static int a[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
@@ -505,30 +460,8 @@ void edmaHwiTX(int tcc)
 	/* Put this buffer in the outgoing mbox */
 	/* TODO: Test for failure. */
 	if(FALSE==MBX_post(&MBX1,&TXchunksData[tcc].LAddr,0)){
-				error++;
+				TXerror++;
 	}
-
-#if 0
-	if(MBX_pend(&MBX0,&inmem,0) == FALSE ){
-		/* NO Buffer available is BAD */
-		return;
-	}
-#endif
-
-	/* Post SWI saying there's a free output buffer */
-	//SWI_andn(&SWI0,0x2);
-
-#if 0
-	//inmem = currentAddr;
-	outmemL = TXchunksData[tcc].LAddr;
-	outmemR = TXchunksData[tcc].RAddr;
-
-	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
-		*outmemL = *inmem;
-		*outmemR = *(inmem+RX_BUFFER_CHANNEL_SAMPLES);
-		outmemL++;outmemR++;inmem++;
-	}
-#endif
 
 
 	return;

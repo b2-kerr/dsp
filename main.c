@@ -54,7 +54,7 @@ short sProcess[RX_BUFFER_CHANNEL_CHUNKS_BYTES];
 chunksData_s RXchunksData[16];
 chunksData_s TXchunksData[16];
 
-#if 0
+#if 1
 float H[FILTER_LENGTH_WORDS] = {
 		0.090909,
 		0.090909,
@@ -68,12 +68,15 @@ float H[FILTER_LENGTH_WORDS] = {
 		0.090909,
 		0.090909
 };
-#endif
+
+
+#else
 
 float H[FILTER_LENGTH_WORDS] = {
 		0,0,0,0,0,1,0,0,0,0,0
 };
 
+#endif
 
 
 
@@ -85,6 +88,30 @@ SINE_Obj sineObjR;
  */
 void main()
 {
+
+	int i;
+
+	CSL_init();
+	DSK6713_init();
+
+	LOG_printf(&LOG1,"Main starting.....\n");
+
+	for ( i=0; i<RX_BUFFER_SAMPLES; i++)
+	{
+		sRxBuffer[i] = 0;
+		sTxBuffer[i] = 0;
+	}
+
+	//SWI_enable();
+
+#if 1
+	initMcBSP();
+
+	LOG_printf(&LOG1, "Init EDMA...\n");
+	initEdma();
+
+#endif
+
 
 
 }
@@ -127,17 +154,30 @@ void audiotsk (void){
 
 	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
 
-		ret = conv(inputL,H,
-			FILTER_LENGTH_WORDS,
-			BLOCK_SIZE_512,
-			n+5);
+#if 1
+		//C62_disableIER(C62_EINT8);
+
+		ret = conv(
+				inputL,
+				H,
+				FILTER_LENGTH_WORDS,
+				BLOCK_SIZE_4096,
+				n);
+
+		//C62_enableIER(C62_EINT8);
 
 		*outputL = (short)ret;
 
-		//*outputL = *inputL;
+#else
+		*outputL = 0;
+#endif
+
+
 		*outputR = *inputR;
 
-		outputL++;outputR++;
+		outputL++;
+		outputR++;
+
 		inputR++;
 	}
 
@@ -156,30 +196,14 @@ int dspmain(void){
 	int led=0;
 	int ledd=1;
 
-	CSL_init();
-	DSK6713_init();
 
-	LOG_printf(&LOG1,"Main starting.....\n");
+	DSK6713_LED_init();
 
-	for ( i=0; i<RX_BUFFER_SAMPLES; i++)
-	{
-		sRxBuffer[i] = 0;
-		sTxBuffer[i] = 0;
-	}
-
-	//SWI_enable();
-
-	initMcBSP();
-
-	LOG_printf(&LOG1, "Init EDMA...\n");
-	initEdma();
-
-	LOG_printf(&LOG1, "Init HWI...\n");
+#if 1
 	initHwi();
 
 	startMcBSP();
-
-	DSK6713_LED_init();
+#endif
 
 
 	while(1){
