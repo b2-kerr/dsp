@@ -17,6 +17,7 @@
 #include "edma.h"
 #include "mcbsp.h"
 #include "dsk6713.h"
+#include "dsk6713_led.h"
 
 #include "c62.h"
 #include "dsp_cw.h"
@@ -86,6 +87,8 @@ int dspmain(void){
 	LOG_printf(&LOG1,"DSP MAIN Starting.....\n");
 
 	int i;
+	int led=0;
+	int ledd=1;
 
 	CSL_init();
 	DSK6713_init();
@@ -108,9 +111,24 @@ int dspmain(void){
 
 	startMcBSP();
 
+	DSK6713_LED_init();
+
+
 	while(1){
 
 		LOG_printf(&LOG1, "Count is at RX:TX [%d:%d]",getRXCount(), getTXCount());
+
+		DSK6713_LED_off(led);
+
+		led+=ledd;
+
+		if(led==3)
+			ledd*=-1;
+
+		if(led==0)
+			ledd*=-1;
+
+		DSK6713_LED_on(led);
 
 		TSK_sleep(2000);
 	}
