@@ -38,6 +38,10 @@ bios.MEM.BSSSEG = prog.get("IRAM");
 bios.MEM.FARSEG = prog.get("IRAM");
 bios.HWI.instance("HWI_INT8").fxn = prog.extern("EDMA_intDispatcher");
 bios.HWI.instance("HWI_INT8").useDispatcher = 1;
+bios.MBX.create("MBX0");
+bios.MBX.instance("MBX0").elementSeg = prog.get("SDRAM");
+bios.MBX.instance("MBX0").length = 5;
+bios.MBX.instance("MBX0").messageSize = 4;
 // !GRAPHICAL_CONFIG_TOOL_SCRIPT_INSERT_POINT!
 
 prog.gen();

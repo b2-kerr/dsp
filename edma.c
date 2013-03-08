@@ -69,6 +69,8 @@ EDMA_Config variableName = {
 #include "log.h"
 #include "edma.h"
 #include "que.h"
+#include <mbx.h>
+
 /*
  *  ======== Declarations ========
  */
@@ -186,7 +188,7 @@ int edmaSetupTX(void){
 
 	LOG_printf(&LOG1,"Setting up RX EDMA....");
 
-	sAddr = sRxBuffer;
+	sAddr = sTxBuffer;
 
 	/* Pre-allocate a bunch of tables */
 	if(EDMA_allocTableEx(RX_BUFFER_CHANNEL_CHUNKS,hEdmaReloadXmt)!=RX_BUFFER_CHANNEL_CHUNKS){
@@ -424,7 +426,11 @@ void edmaHwi(int tcc)
 
 	counterRX ++;
 
-	currentAddr = RXchunksData[tcc].LAddr;
+	/* Buffer of data is ready, post this in */
+
+	MBX_post(&MBX0,&RXchunksData[tcc].LAddr,0);
+
+	//currentAddr = RXchunksData[tcc].LAddr;
 
 	/* Disable events? */
 
@@ -451,13 +457,19 @@ void edmaHwiTX(int tcc)
 
 	//inmem = sRxBuffer;
 
-	inmem = currentAddr;
+	/* Grab latest buffer from incoming HWI */
+	if(MBX_pend(&MBX0,&inmem,0) == FALSE ){
+		/* NO Buffer available is BAD */
+		return;
+	}
+
+	//inmem = currentAddr;
 	outmemL = TXchunksData[tcc].LAddr;
 	outmemR = TXchunksData[tcc].RAddr;
 
 	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
 		*outmemL = *inmem;
-		*outmemR = *inmem;
+		*outmemR = *(inmem+RX_BUFFER_CHANNEL_SAMPLES);
 		outmemL++;outmemR++;inmem++;
 	}
 
