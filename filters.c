@@ -6,6 +6,8 @@
  */
 
 
+/* With music you can't really get much above 8/9k */
+
 int flt_HighPassCount = 101;
 float flt_HighPass[101] = {
 		  -0.0005021235556,9.351379413e-05,  0.00047928188,-0.0004590559402,-0.0002211531391,
@@ -58,7 +60,7 @@ float flt_LowPass[101] = {
 };
 
 
-/* 2000 - 4000 */
+/* 800 - 2000 */
 int flt_BandPassCount = 101;
 float flt_BandPass[101] = {
 		  0.0007447632379,0.0006596232415,0.0005646148929,0.0004597065854,0.0003460008593,

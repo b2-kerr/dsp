@@ -125,7 +125,6 @@ void initHwi(void)
 {
 	/* Int8 is the EDMA interrrupt to the CPU */
 	C62_enableIER(C62_EINT8);
-	//C62_enableIER(C62_EINT4);
 
 	/* Turns on Global Interrupts */
 	IRQ_globalEnable();
