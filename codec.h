@@ -5,3 +5,4 @@
  */
 
 extern void initCodec(MCBSP_Handle hMcbsp);
+extern int codecInitNew(void);

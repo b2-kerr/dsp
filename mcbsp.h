@@ -10,3 +10,4 @@
 extern void initMcBSP(void);
 extern MCBSP_Handle hMcbspControl;
 extern MCBSP_Handle hMcbspData;
+void startMcBSP(void);

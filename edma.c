@@ -107,17 +107,13 @@ EDMA_Handle hEdmaReloadXmt[RX_BUFFER_CHANNEL_CHUNKS];
 EDMA_Handle hEdmaRcv;
 EDMA_Handle hEdmaReloadRcv[RX_BUFFER_CHANNEL_CHUNKS];
 
-
-short TCCId[RX_BUFFER_CHANNEL_CHUNKS];
-
-
 /*
  *
  * SETUP RECEIVE EDMA
  */
 EDMA_Config gEdmaConfigRcv = {  
     EDMA_OPT_RMK(
-        EDMA_OPT_PRI_LOW,		// Priority
+        EDMA_OPT_PRI_HIGH,		// Priority
         EDMA_OPT_ESIZE_16BIT,	// Element size
         EDMA_OPT_2DS_NO,		// 2 dimensional source
         EDMA_OPT_SUM_NONE,		// Src update mode
@@ -125,11 +121,6 @@ EDMA_Config gEdmaConfigRcv = {
         EDMA_OPT_DUM_IDX,		// Dest update mode
         EDMA_OPT_TCINT_YES,		// Cause EDMA interrupt
         EDMA_OPT_TCC_OF(0),		// Transfer Complete Code
-//        EDMA_OPT_TCCM_DEFAULT,	// Transfer Complete Code Upper Bits (c64x only)
-//        EDMA_OPT_ATCINT_DEFAULT,	// Alternate TCC Interrupt (c64x only)
-//        EDMA_OPT_ATCC_DEFAULT,		// Alternate Transfer Complete Code (c64x only)
-//        EDMA_OPT_PDTS_DEFAULT,		// Peripheral Device Transfer Source (c64x only)
-//        EDMA_OPT_PDTD_DEFAULT,		// Peripheral Device Transfer Dest (c64x only)
         EDMA_OPT_LINK_YES,		// Enable link parameters
         EDMA_OPT_FS_NO			// Use frame sync
     ),
@@ -165,11 +156,6 @@ EDMA_Config gEdmaConfigXmt = {
         EDMA_OPT_DUM_NONE,		// Dest update mode
         EDMA_OPT_TCINT_YES,		// Cause EDMA interrupt
         EDMA_OPT_TCC_OF(0),		// Transfer Complete Code
-//        EDMA_OPT_TCCM_DEFAULT,	// Transfer Complete Code Upper Bits (c64x only)
-//        EDMA_OPT_ATCINT_DEFAULT,	// Alternate TCC Interrupt (c64x only)
-//        EDMA_OPT_ATCC_DEFAULT,		// Alternate Transfer Complete Code (c64x only)
-//        EDMA_OPT_PDTS_DEFAULT,		// Peripheral Device Transfer Source (c64x only)
-//        EDMA_OPT_PDTD_DEFAULT,		// Peripheral Device Transfer Dest (c64x only)
         EDMA_OPT_LINK_YES,		// Enable link parameters
         EDMA_OPT_FS_NO			// Use frame sync
     ),
@@ -192,84 +178,94 @@ EDMA_Config gEdmaConfigXmt = {
 
 int edmaSetupTX(void){
 
-	short txTCC;
-	int n;
+	short gRcvTCC;
+	int n = 0;
 	short* sAddr;
+	EDMA_Config tempConfig;
+	Uint32 temp32;
 
-	LOG_printf(&LOG1,"Setting up TX EDMA....");
+	LOG_printf(&LOG1,"Setting up RX EDMA....");
 
-		/* Get handle to channel with MCBSP receive event on it */
-		hEdmaXmt = EDMA_open(EDMA_CHA_XEVT1, EDMA_OPEN_RESET);
+	sAddr = sRxBuffer;
 
-		/* Get a tcc code */
-		txTCC = EDMA_intAlloc(-1);
-		gEdmaConfigXmt.opt |= EDMA_FMK(OPT, TCC, txTCC);
-
-		TXchunksData[txTCC].TCCID = txTCC;
-
-		/* Here the McBSP address is entered */
-		gEdmaConfigXmt.dst = MCBSP_getXmtAddr( hMcbspData );
-
-		/* Set the destination address */
-		gEdmaConfigXmt.src = EDMA_SRC_OF(sTxBuffer);
-
-		/* Create RUNTIME handles based on the above configs */
-		EDMA_config(hEdmaXmt, &gEdmaConfigXmt);
-
-		hEdmaReloadXmt[0] = EDMA_allocTable(-1);
-		EDMA_config(hEdmaReloadXmt[0],&gEdmaConfigXmt);
-
-		sAddr = sTxBuffer;
-
-		TXchunksData[txTCC].LAddr = sAddr;
-		TXchunksData[txTCC].RAddr = sAddr+RX_BUFFER_CHANNEL_SAMPLES;
-
-		/* Now sort out all the reloads and linking */
-		for(n=1;n<RX_BUFFER_CHANNEL_CHUNKS;n++){
-
-			/* Setup reload for incoming channel */
-			hEdmaReloadXmt[n] = EDMA_allocTable(-1);
-
-			/* Jump one channel's worth of data */
-			sAddr += RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;
-
-			//LOG_printf(&LOG1, "[%d] addr: %X", n, sAddr);
-
-			/* Set the destination address */
-			gEdmaConfigXmt.src = EDMA_SRC_OF(sAddr);
-
-			/* Get a new code for this */
-			txTCC = EDMA_intAlloc(-1);
-
-			TXchunksData[txTCC].TCCID = txTCC;
-			TXchunksData[txTCC].LAddr = sAddr;
-			TXchunksData[txTCC].RAddr = sAddr+RX_BUFFER_CHANNEL_SAMPLES;
-
-			gEdmaConfigXmt.opt |= EDMA_FMK(OPT, TCC, txTCC);
-
-			/* Set This In */
-			EDMA_config(hEdmaReloadXmt[n], &gEdmaConfigXmt);
-
-			/* Link previous one to this one */
-			EDMA_link(hEdmaReloadXmt[n-1],hEdmaReloadXmt[n]);
-
-			EDMA_intHook(txTCC, edmaHwiTX);
-			EDMA_intClear(txTCC);
-			EDMA_intEnable(txTCC);
-
-		}
-
-		/* Link the initial one to the second of the reloads */
-		EDMA_link(hEdmaXmt,hEdmaReloadXmt[1]);
-
-		/* Link final one to first one */
-		EDMA_link(hEdmaReloadXmt[RX_BUFFER_CHANNEL_CHUNKS-1], hEdmaReloadXmt[0]);
-
-		EDMA_enableChannel(hEdmaXmt);
-
-		return 0;
+	/* Pre-allocate a bunch of tables */
+	if(EDMA_allocTableEx(RX_BUFFER_CHANNEL_CHUNKS,hEdmaReloadXmt)!=RX_BUFFER_CHANNEL_CHUNKS){
+		LOG_printf(&LOG1,"ERROR: Cannot allocate Reload PRAM.\n");
+		return -1;
 	}
 
+	/* Here the McBSP address is entered */
+	gEdmaConfigXmt.dst = MCBSP_getXmtAddr( hMcbspData );
+
+	/* Sort out all the reloads and linking */
+	for(n=0;n<RX_BUFFER_CHANNEL_CHUNKS;n++){
+
+		/* Setup reload for incoming channel */
+		//hEdmaReloadXmt[n] = EDMA_allocTable(n+5);
+
+		/* Set the destination address */
+		gEdmaConfigXmt.src = EDMA_SRC_OF(sAddr);
+
+		/* Get a new Transfer Complete code for this */
+		temp32 = EDMA_intAlloc(-1);
+
+		gRcvTCC = temp32;
+
+		TXchunksData[gRcvTCC].TCCID = gRcvTCC;
+		TXchunksData[gRcvTCC].LAddr = sAddr;
+		TXchunksData[gRcvTCC].RAddr = sAddr+RX_BUFFER_CHANNEL_SAMPLES;
+
+		/* Now set the transfer complete code */
+		gEdmaConfigXmt.opt &= 0xFFF0FFFF;
+		temp32 &= 0xF;
+		gEdmaConfigXmt.opt |= temp32<<16;
+
+		LOG_printf(&LOG1, "Chunk [%d] is \n",n);
+		LOG_printf(&LOG1, "TCC[%d] addr[%X]\n", gRcvTCC, (unsigned int)sAddr);
+
+		/* Set This In */
+		EDMA_config(hEdmaReloadXmt[n], &gEdmaConfigXmt);
+
+		if(n>0){
+			/* Link previous one to this one */
+			EDMA_link(hEdmaReloadXmt[n-1],hEdmaReloadXmt[n]);
+		}
+
+		//EDMA_intClear(gRcvTCC);
+		EDMA_intEnable(gRcvTCC);
+
+		EDMA_intHook(gRcvTCC, edmaHwiTX);
+
+		/* Jump one channel's worth of data */
+		sAddr += RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;
+
+	}
+
+	/* Link final one to first one */
+	EDMA_link(hEdmaReloadXmt[RX_BUFFER_CHANNEL_CHUNKS-1], hEdmaReloadXmt[0]);
+
+	/* Get handle to channel with MCBSP receive event on it */
+	hEdmaXmt = EDMA_open(EDMA_CHA_XEVT1, EDMA_OPEN_ENABLE);
+
+	/* Now set this new channel to have the same config as the reload 0 */
+	EDMA_getConfig(hEdmaReloadXmt[0],&tempConfig);
+	EDMA_config(hEdmaXmt,&tempConfig);
+
+
+	for(n=0;n<RX_BUFFER_CHANNEL_CHUNKS;n++){
+
+		EDMA_getConfig(hEdmaReloadXmt[n],&tempConfig);
+		LOG_printf(&LOG1, "TX Reload [%d] at Addr [%X].\n",n,tempConfig.rld);
+
+	}
+
+	EDMA_getConfig(hEdmaXmt,&tempConfig);
+	LOG_printf(&LOG1, "TX Reload Init at Addr [%X].\n",tempConfig.rld);
+
+	EDMA_enableChannel(hEdmaXmt);
+
+	return 0;
+}
 
 
 int edmaSetupRX(void){
@@ -278,35 +274,48 @@ int edmaSetupRX(void){
 	int n = 0;
 	short* sAddr;
 	EDMA_Config tempConfig;
+	Uint32 temp32;
 
-	LOG_printf(&LOG1,"Setting up EDMA....");
+	LOG_printf(&LOG1,"Setting up RX EDMA....");
 
 	sAddr = sRxBuffer;
 
+
 	/* Pre-allocate a bunch of tables */
-	EDMA_allocTableEx(RX_BUFFER_CHANNEL_CHUNKS,hEdmaReloadRcv);
+	if(EDMA_allocTableEx(RX_BUFFER_CHANNEL_CHUNKS,hEdmaReloadRcv)!=RX_BUFFER_CHANNEL_CHUNKS){
+		LOG_printf(&LOG1,"ERROR: Cannot allocate Reload PRAM.\n");
+		return -1;
+	}
 
 	/* Here the McBSP address is entered */
 	gEdmaConfigRcv.src = MCBSP_getRcvAddr( hMcbspData );
+
+
 
 	/* Sort out all the reloads and linking */
 	for(n=0;n<RX_BUFFER_CHANNEL_CHUNKS;n++){
 
 		/* Setup reload for incoming channel */
-		//hEdmaReloadRcv[n] = EDMA_allocTable(-1);
+		//hEdmaReloadRcv[n] = EDMA_allocTable(n+5);
 
 		/* Set the destination address */
 		gEdmaConfigRcv.dst = EDMA_DST_OF(sAddr);
 
 		/* Get a new Transfer Complete code for this */
-		gRcvTCC = EDMA_intAlloc(-1);
+		temp32 = EDMA_intAlloc(-1);
+
+		gRcvTCC = temp32;
 
 		RXchunksData[gRcvTCC].TCCID = gRcvTCC;
 		RXchunksData[gRcvTCC].LAddr = sAddr;
 		RXchunksData[gRcvTCC].RAddr = sAddr+RX_BUFFER_CHANNEL_SAMPLES;
 
 		/* Now set the transfer complete code */
-		gEdmaConfigRcv.opt |= EDMA_FMK(OPT, TCC, gRcvTCC);
+		gEdmaConfigRcv.opt &= 0xFFF0FFFF;
+		temp32 &= 0xF;
+		gEdmaConfigRcv.opt |= temp32<<16;
+
+		//gEdmaConfigRcv.opt |= EDMA_FMK(OPT, TCC, gRcvTCC);
 
 		LOG_printf(&LOG1, "Chunk [%d] is \n",n);
 		LOG_printf(&LOG1, "TCC[%d] addr[%X]\n", gRcvTCC, (unsigned int)sAddr);
@@ -319,14 +328,18 @@ int edmaSetupRX(void){
 			EDMA_link(hEdmaReloadRcv[n-1],hEdmaReloadRcv[n]);
 		}
 
-		EDMA_intHook(gRcvTCC, edmaHwi);
-		EDMA_intClear(gRcvTCC);
+		//EDMA_intClear(gRcvTCC);
 		EDMA_intEnable(gRcvTCC);
+
+		EDMA_intHook(gRcvTCC, edmaHwi);
 
 		/* Jump one channel's worth of data */
 		sAddr += RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;
 
 	}
+
+
+
 
 
 	/* Link final one to first one */
@@ -335,45 +348,24 @@ int edmaSetupRX(void){
 	/* Get handle to channel with MCBSP receive event on it */
 	hEdmaRcv = EDMA_open(EDMA_CHA_REVT1, EDMA_OPEN_RESET);
 
+
+
 	/* Now set this new channel to have the same config as the reload 0 */
 	EDMA_getConfig(hEdmaReloadRcv[0],&tempConfig);
 	EDMA_config(hEdmaRcv,&tempConfig);
 
-#if 0
-	gRcvTCC = EDMA_intAlloc(-1);
-	gEdmaConfigRcv.opt |= EDMA_FMK(OPT, TCC, gRcvTCC);
 
-	EDMA_intHook(gRcvTCC, edmaHwi);
-	EDMA_intClear(gRcvTCC);
-	EDMA_intEnable(gRcvTCC);
+	for(n=0;n<RX_BUFFER_CHANNEL_CHUNKS;n++){
 
-	RXchunksData[gRcvTCC].TCCID = gRcvTCC;
+		EDMA_getConfig(hEdmaReloadRcv[n],&tempConfig);
+		LOG_printf(&LOG1, "Reload [%d] at Addr [%X].\n",n,tempConfig.rld);
 
+	}
 
-
-	/* Set the destination address */
-	gEdmaConfigRcv.dst = EDMA_DST_OF(sRxBuffer);
-
-	/* Create RUNTIME handles based on the above configs */
-	EDMA_config(hEdmaRcv, &gEdmaConfigRcv);
-
-	hEdmaReloadRcv[0] = EDMA_allocTable(-1);
-	EDMA_config(hEdmaReloadRcv[0],&gEdmaConfigRcv);
+	EDMA_getConfig(hEdmaRcv,&tempConfig);
+	LOG_printf(&LOG1, "Reload Init at Addr [%X].\n",tempConfig.rld);
 
 
-	RXchunksData[gRcvTCC].LAddr = sAddr;
-	RXchunksData[gRcvTCC].RAddr = sAddr+RX_BUFFER_CHANNEL_SAMPLES;
-
-	LOG_printf(&LOG1, "Chunk [%d] is \n",n);
-	LOG_printf(&LOG1, "TCC[%d] addr[%X]\n", gRcvTCC, (unsigned int)sAddr);
-
-	/* Link the initial one to the second of the reloads */
-	EDMA_link(hEdmaRcv,hEdmaReloadRcv[1]);
-
-
-#endif
-
-	EDMA_enableChannel(hEdmaRcv);
 
 	return 0;
 }
@@ -387,13 +379,23 @@ int edmaSetupRX(void){
 void initEdma(void)
 {
 
-	//QUE_new(&Q1);
+	EDMA_resetAll();
+	EDMA_intResetAll();
+	//EDMA_clearPram(0);
 
 	/* Setup receive stream */
 	edmaSetupRX();
 
 	/* Setup transmit stream */
-	//edmaSetupTX();
+	edmaSetupTX();
+
+
+	EDMA_enableChannel(hEdmaRcv);
+	EDMA_enableChannel(hEdmaXmt);
+
+
+	LOG_printf(&LOG1, "Receive channel says: %d.\n",EDMA_getChannel(hEdmaRcv));
+
 
 }
 
@@ -415,9 +417,6 @@ int getTXCount(void){
  */
 void edmaHwi(int tcc)
 {
-	int n;
-	int found = 0;
-	short*addr;
 
 	static int a[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
@@ -425,20 +424,12 @@ void edmaHwi(int tcc)
 
 	counterRX ++;
 
-	addr = RXchunksData[tcc].LAddr;
+	currentAddr = RXchunksData[tcc].LAddr;
 
-	currentAddr = addr;
-
-	for(n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
-
-		*addr = 0;
-		addr++;
-
-	}
+	/* Disable events? */
 
 	return;
 }
-
 
 
 /*
@@ -446,10 +437,11 @@ void edmaHwi(int tcc)
  */
 void edmaHwiTX(int tcc)
 {
+
 	int n;
-	int found = 0;
-	short*addr;
-	short*addr2;
+	short*inmem;
+	short*outmemL;
+	short*outmemR;
 
 	static int a[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
@@ -457,6 +449,17 @@ void edmaHwiTX(int tcc)
 
 	counterTX++;
 
+	//inmem = sRxBuffer;
+
+	inmem = currentAddr;
+	outmemL = TXchunksData[tcc].LAddr;
+	outmemR = TXchunksData[tcc].RAddr;
+
+	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
+		*outmemL = *inmem;
+		*outmemR = *inmem;
+		outmemL++;outmemR++;inmem++;
+	}
 
 
 	return;

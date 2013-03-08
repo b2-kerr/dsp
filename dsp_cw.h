@@ -13,7 +13,7 @@
 /* This is STEREO, so the TOTAL buffer is double the CHANNEL buffer */
 
 /* How many 2-byte samples in each channel buffer? */
-#define RX_BUFFER_CHANNEL_SAMPLES (128)
+#define RX_BUFFER_CHANNEL_SAMPLES (512)
 
 /* The main buffer is split into two buffers: one for each channel */
 #define RX_BUFFER_SAMPLES (RX_BUFFER_CHANNEL_SAMPLES*2)
@@ -23,7 +23,7 @@
 #define RX_BUFFER_CHANNEL_BYTES (RX_BUFFER_CHANNEL_SAMPLES*2)
 
 /* How many chunks is each channel buffer split into? */
-#define RX_BUFFER_CHANNEL_CHUNKS (4)
+#define RX_BUFFER_CHANNEL_CHUNKS (2)
 #define RX_BUFFER_CHANNEL_CHUNKS_BYTES (RX_BUFFER_CHANNEL_BYTES/RX_BUFFER_CHANNEL_CHUNKS)
 #define RX_BUFFER_CHANNEL_CHUNKS_SAMPLES (RX_BUFFER_CHANNEL_SAMPLES/RX_BUFFER_CHANNEL_CHUNKS)
 
