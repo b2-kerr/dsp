@@ -13,7 +13,7 @@
 /* This is STEREO, so the TOTAL buffer is double the CHANNEL buffer */
 
 /* How many 2-byte samples in each channel buffer? */
-#define RX_BUFFER_CHANNEL_SAMPLES (2048)
+#define RX_BUFFER_CHANNEL_SAMPLES (256)
 
 /* The main buffer is split into two buffers: one for each channel */
 #define RX_BUFFER_SAMPLES (RX_BUFFER_CHANNEL_SAMPLES*2)
@@ -31,6 +31,25 @@
 	#error "Increase Channel Buffer Size"
 #endif
 
+
+/* Block sizes (in bytes) for the circular buffering */
+enum{
+	BLOCK_SIZE_2 = 0,
+	BLOCK_SIZE_4,
+	BLOCK_SIZE_8,
+	BLOCK_SIZE_16,
+	BLOCK_SIZE_32,
+	BLOCK_SIZE_64,
+	BLOCK_SIZE_128,
+	BLOCK_SIZE_256,
+	BLOCK_SIZE_512,
+	BLOCK_SIZE_1024,
+	BLOCK_SIZE_2048,
+	BLOCK_SIZE_4096
+};
+
+#define FILTER_LENGTH_WORDS 11
+extern float H[FILTER_LENGTH_WORDS];
 
 typedef struct MsgObj {
     QUE_Elem elem; /* first field for QUE */

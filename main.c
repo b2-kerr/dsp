@@ -28,7 +28,8 @@
 /*
  *  ======== Declarations ========
  */
-//#define BUFFSIZE 2000
+
+extern float conv( short *, float *, int, int, int);
 
 /*
  *  ======== Prototypes ========
@@ -46,11 +47,34 @@ short sRxBuffer[RX_BUFFER_SAMPLES];
 short sTxBuffer[RX_BUFFER_SAMPLES];
 short sProcess[RX_BUFFER_CHANNEL_CHUNKS_BYTES];
 
+#pragma DATA_ALIGN(sRxBuffer, RX_BUFFER_CHANNEL_BYTES)
+#pragma DATA_ALIGN(sTxBuffer, RX_BUFFER_CHANNEL_BYTES)
+
+
 chunksData_s RXchunksData[16];
 chunksData_s TXchunksData[16];
 
-//#pragma DATA_ALIGN(sRxBuffer, RX_BUFFER_BYTES)
-//#pragma DATA_ALIGN(sTxBuffer, RX_BUFFER_BYTES)
+#if 0
+float H[FILTER_LENGTH_WORDS] = {
+		0.090909,
+		0.090909,
+		0.090909,
+		0.090909,
+		0.090909,
+		0.090909,
+		0.090909,
+		0.090909,
+		0.090909,
+		0.090909,
+		0.090909
+};
+#endif
+
+float H[FILTER_LENGTH_WORDS] = {
+		0,0,0,0,0,1,0,0,0,0,0
+};
+
+
 
 
 SINE_Obj sineObjL;
@@ -87,6 +111,7 @@ void audiotsk (void){
 	short*inputL,*outputL;
 	short*inputR,*outputR;
 	int n;
+	float ret;
 
 
 	while(1){
@@ -101,11 +126,19 @@ void audiotsk (void){
 	outputR = outputL + RX_BUFFER_CHANNEL_SAMPLES;
 
 	for (n=0;n<RX_BUFFER_CHANNEL_CHUNKS_SAMPLES;n++){
-		*outputL = *inputL;
+
+		ret = conv(inputL,H,
+			FILTER_LENGTH_WORDS,
+			BLOCK_SIZE_512,
+			n+5);
+
+		*outputL = (short)ret;
+
+		//*outputL = *inputL;
 		*outputR = *inputR;
 
 		outputL++;outputR++;
-		inputL++;inputR++;
+		inputR++;
 	}
 
 	}

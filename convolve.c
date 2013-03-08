@@ -12,20 +12,7 @@
 #define BUFFER_COUNT (32)
 #define BUFFER_SIZE_BYTES (BUFFER_COUNT*BUFFER_TYPE_SIZE)
 
-/* Block sizes (in bytes) for the circular buffering */
-enum{
-	BLOCK_SIZE_2 = 0,
-	BLOCK_SIZE_4,
-	BLOCK_SIZE_8,
-	BLOCK_SIZE_16,
-	BLOCK_SIZE_32,
-	BLOCK_SIZE_64,
-	BLOCK_SIZE_128,
-	BLOCK_SIZE_256,
-	BLOCK_SIZE_512,
-	BLOCK_SIZE_1024,
-	BLOCK_SIZE_2048
-};
+
 
 /* The assembly functions */
 extern float fira(float *, float *, int, int, int);
@@ -56,9 +43,7 @@ short w[] ={
 
 short out[100];
 
-
-#define FILTER_LENGTH_WORDS 11
-
+#if 0
 float h[FILTER_LENGTH_WORDS] = {
 		1,1,1,1,1,1,1,1,1,1,1
 };
@@ -108,6 +93,7 @@ int convolve(void){
 
 
 
+
 int do_convolve(void*incoming,void*outgoing, int samples){
 
 	int n;
@@ -124,4 +110,4 @@ int do_convolve(void*incoming,void*outgoing, int samples){
 
 	return 0;
 }
-
+#endif
